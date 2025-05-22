@@ -3,65 +3,113 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>画像ストック横断検索ツール</title>
+  <title>画像横断検索ツール</title>
   <style>
-    body { font-family: sans-serif; max-width: 700px; margin: auto; padding: 20px; }
-    input, select, textarea { width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 15px; }
-    button { padding: 10px 20px; font-size: 16px; }
-    .result a { display: block; margin: 8px 0; }
+    body { font-family: sans-serif; margin: 2rem; background: #f4f4f4; }
+    input, select, button { padding: 0.5rem; font-size: 1rem; margin-right: 0.5rem; }
+    .result img { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; margin-right: 16px; }
+    .result div { border: 1px solid #ddd; border-radius: 8px; padding: 10px; margin-bottom: 16px; background: #fff; display: flex; align-items: center; }
+    a { text-decoration: none; color: #0070f3; font-size: 1.1rem; }
   </style>
 </head>
 <body>
-  <h1>画像ストック横断検索ツール</h1>
+  <h1>画像サイト横断検索ツール</h1>
+  <div>
+    <input type="text" id="keyword" placeholder="例：青空 海 朝食" />
+    <select id="media">
+      <option value="ポスター">ポスター</option>
+      <option value="冊子">冊子</option>
+      <option value="バナー">バナー</option>
+      <option value="Web">Web</option>
+      <option value="LP">LP</option>
+    </select>
+    <select id="color">
+      <option value="RGB">RGB</option>
+      <option value="CMYK">CMYK</option>
+    </select>
+    <button onclick="generateLinks()">検索</button>
+  </div>
 
-  <label>使用媒体</label>
-  <select id="media">
-    <option>WEBバナー</option>
-    <option>LP</option>
-    <option>冊子</option>
-    <option>ポスター</option>
-  </select>
-
-  <label>色空間</label>
-  <select id="color">
-    <option>RGB</option>
-    <option>CMYK</option>
-  </select>
-
-  <label>イメージキーワード・説明</label>
-  <textarea id="keyword" rows="3" placeholder="例：明るいカフェで作業する若い女性"></textarea>
-
-  <button onclick="generateLinks()">検索リンクを生成</button>
-
-  <h2>検索リンク一覧</h2>
   <div class="result" id="result"></div>
 
   <script>
+    window.onload = () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has("keyword")) {
+        document.getElementById("keyword").value = decodeURIComponent(params.get("keyword"));
+      }
+      if (params.has("media")) {
+        document.getElementById("media").value = params.get("media");
+      }
+      if (params.has("color")) {
+        document.getElementById("color").value = params.get("color");
+      }
+    };
+
     function generateLinks() {
-      const keyword = encodeURIComponent(document.getElementById("keyword").value.trim());
-      if (!keyword) {
+      const keywordRaw = document.getElementById("keyword").value.trim();
+      if (!keywordRaw) {
         alert("イメージキーワードを入力してください。");
         return;
       }
 
-      const sites = {
-        "Shutterstock": `https://www.shutterstock.com/search/${keyword}`,
-        "Adobe Stock": `https://stock.adobe.com/jp/search?k=${keyword}`,
-        "iStock": `https://www.istockphoto.com/jp/search/2/image?phrase=${keyword}`,
-        "PIXTA": `https://pixta.jp/search?query=${keyword}`,
-        "写真AC": `https://www.photo-ac.com/main/search?q=${keyword}`
-      };
+      const keyword = encodeURIComponent(keywordRaw);
+      const media = document.getElementById("media").value;
+      const color = document.getElementById("color").value;
+
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set("keyword", keywordRaw);
+      currentUrl.searchParams.set("media", media);
+      currentUrl.searchParams.set("color", color);
+      window.history.replaceState({}, '', currentUrl.toString());
+
+      const services = [
+        {
+          name: "Shutterstock",
+          url: `https://www.shutterstock.com/search/${keyword}`,
+          thumb: `https://source.unsplash.com/featured/?${keywordRaw}`
+        },
+        {
+          name: "Adobe Stock",
+          url: `https://stock.adobe.com/jp/search?k=${keyword}`,
+          thumb: `https://source.unsplash.com/featured/?${keywordRaw},design`
+        },
+        {
+          name: "iStock",
+          url: `https://www.istockphoto.com/jp/search/2/image?phrase=${keyword}`,
+          thumb: `https://source.unsplash.com/featured/?${keywordRaw},creative`
+        },
+        {
+          name: "PIXTA",
+          url: `https://pixta.jp/search?query=${keyword}`,
+          thumb: `https://source.unsplash.com/featured/?${keywordRaw},japan`
+        },
+        {
+          name: "写真AC",
+          url: `https://www.photo-ac.com/main/search?q=${keyword}`,
+          thumb: `https://source.unsplash.com/featured/?${keywordRaw},photo`
+        }
+      ];
 
       const resultDiv = document.getElementById("result");
-      resultDiv.innerHTML = "";
+      resultDiv.innerHTML = "<h2>検索リンク（プレビュー）</h2>";
 
-      for (const [name, url] of Object.entries(sites)) {
+      services.forEach(service => {
+        const container = document.createElement("div");
+
+        const img = document.createElement("img");
+        img.src = service.thumb;
+        img.alt = service.name;
+
         const link = document.createElement("a");
-        link.href = url;
+        link.href = service.url;
         link.target = "_blank";
-        link.textContent = `🔗 ${name} で検索`;
-        resultDiv.appendChild(link);
-      }
+        link.innerText = `🔎 ${service.name} で検索`;
+
+        container.appendChild(img);
+        container.appendChild(link);
+        resultDiv.appendChild(container);
+      });
     }
   </script>
 </body>
